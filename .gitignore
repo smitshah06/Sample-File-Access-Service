@@ -11,8 +11,8 @@ storage/
 frontend/node_modules/
 frontend/dist/
 
-# Private working copy of the plan (contains interview notes). The submitted plan is docs/.
-implementation-plan.pdf
 .DS_Store
-# Self-review notes (include interview prep); not part of the submission.
+
+# Local working files, not part of the submission (the plan lives in docs/).
+implementation-plan.pdf
 code-review.md
