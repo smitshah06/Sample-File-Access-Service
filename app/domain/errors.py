@@ -13,6 +13,10 @@ class DomainError(Exception):
             self.code = code
 
 
+class Unauthenticated(DomainError):
+    code = "not_authenticated"
+
+
 class NotFound(DomainError):
     """Resource doesn't exist, or the caller may not know it exists. Deliberately the same."""
 
@@ -26,6 +30,18 @@ class Forbidden(DomainError):
 
 class BadRequest(DomainError):
     code = "bad_request"
+
+
+class Conflict(DomainError):
+    code = "conflict"
+
+
+class PayloadTooLarge(DomainError):
+    code = "file_too_large"
+
+
+class InsufficientStorage(DomainError):
+    code = "insufficient_storage"
 
 
 class QcNotPassed(DomainError):

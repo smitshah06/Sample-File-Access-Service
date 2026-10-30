@@ -16,6 +16,6 @@ testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra"
 filterwarnings = [
-    # Raised inside starlette's TestClient by newer anyio releases; not our code.
-    "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+    # Starlette 1.x nudges TestClient users towards httpx2; httpx still works. Test-only.
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
 ]

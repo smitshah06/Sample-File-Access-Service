@@ -1,28 +1,76 @@
-"""Request-scoped dependencies: who is calling, and the service wired to a DB connection."""
+"""Request-scoped dependencies: one DB connection per request, the services built on it,
+and who is calling."""
 
 import hmac
-import re
+import sqlite3
 from collections.abc import Iterator
+from typing import Annotated
 
-from fastapi import Header, Request
+from fastapi import Cookie, Depends, Header, Request
 
-from app.api.schemas import USER_ID_PATTERN
+from app.domain.audit import Auditor
+from app.domain.errors import Unauthenticated
+from app.domain.models import Caller
 from app.domain.service import AccessService
+from app.domain.users import UserService
 from app.persistence.repository import SqliteRepository, connect
 
-
-class Unauthorized(Exception):
-    def __init__(self, code: str, message: str):
-        self.code = code
-        self.message = message
+SESSION_COOKIE = "sfa_session"
 
 
-def get_caller_id(x_user_id: str | None = Header(default=None)) -> str:
-    # PLACEHOLDER for real authentication. In production this validates an Entra ID bearer
-    # token and returns its `oid` claim. Nothing else in the codebase reads this header.
-    if x_user_id is None or not re.fullmatch(USER_ID_PATTERN, x_user_id):
-        raise Unauthorized("missing_identity", "X-User-Id header is missing or malformed")
-    return x_user_id
+def get_conn(request: Request) -> Iterator[sqlite3.Connection]:
+    conn = connect(request.app.state.settings.db_path)
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+
+Conn = Annotated[sqlite3.Connection, Depends(get_conn)]
+
+
+def _auditor(request: Request, repo: SqliteRepository) -> Auditor:
+    return Auditor(repo, request.app.state.clock)
+
+
+def get_access_service(request: Request, conn: Conn) -> AccessService:
+    state = request.app.state
+    repo = SqliteRepository(conn)
+    return AccessService(
+        repo,
+        state.signer,
+        state.clock,
+        _auditor(request, repo),
+        state.store,
+        url_ttl_seconds=state.settings.download_url_ttl_seconds,
+        max_upload_bytes=state.settings.max_upload_mb * 1024 * 1024,
+        chunk_bytes=state.settings.upload_chunk_bytes,
+        free_space_reserve=state.settings.min_free_disk_mb * 1024 * 1024,
+    )
+
+
+def get_user_service(request: Request, conn: Conn) -> UserService:
+    repo = SqliteRepository(conn)
+    return UserService(
+        repo,
+        request.app.state.clock,
+        _auditor(request, repo),
+        session_ttl_hours=request.app.state.settings.session_ttl_hours,
+    )
+
+
+Users = Annotated[UserService, Depends(get_user_service)]
+
+
+def get_current_user(
+    users: Users, session: Annotated[str | None, Cookie(alias=SESSION_COOKIE)] = None
+) -> Caller:
+    # The single identity seam. In production this validates a Microsoft Entra ID token
+    # instead; nothing else in the codebase knows how the caller was authenticated.
+    caller = users.resolve_session(session) if session else None
+    if caller is None:
+        raise Unauthenticated("sign in required")
+    return caller
 
 
 def require_pipeline_token(
@@ -31,18 +79,4 @@ def require_pipeline_token(
     # PLACEHOLDER for service-to-service auth (managed identity + app role, or Service Bus).
     expected = request.app.state.settings.qc_callback_token.encode()
     if x_pipeline_token is None or not hmac.compare_digest(x_pipeline_token.encode(), expected):
-        raise Unauthorized("invalid_pipeline_token", "pipeline token is missing or invalid")
-
-
-def get_service(request: Request) -> Iterator[AccessService]:
-    state = request.app.state
-    conn = connect(state.settings.db_path)
-    try:
-        yield AccessService(
-            SqliteRepository(conn),
-            state.signer,
-            state.clock,
-            url_ttl_seconds=state.settings.download_url_ttl_seconds,
-        )
-    finally:
-        conn.close()
+        raise Unauthenticated("pipeline token is missing or invalid", code="invalid_pipeline_token")
