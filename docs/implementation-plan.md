@@ -38,8 +38,7 @@ Other key behaviour:
 7. [CI/CD](#7-cicd)
 8. [Production path on Azure (not built)](#8-production-path-on-azure-not-built)
 9. [Known weaknesses and trade-offs](#9-known-weaknesses-and-trade-offs)
-10. [Implementation plan and time budget](#10-implementation-plan-and-time-budget)
-11. [README outline](#11-readme-outline)
+10. [README outline](#10-readme-outline)
 
 ---
 
@@ -70,7 +69,7 @@ I worked in two phases. Phase 1 delivered the spec's required scope first, so th
 - the shared-secret QC callback
 - the layered structure with a pure domain
 
-The phase-1 version of this plan can be read with `git show v1-timeboxed:docs/implementation-plan.md`. The actual timeline is in [§10](#10-implementation-plan-and-time-budget).
+The phase-1 version of this plan can be read with `git show v1-timeboxed:docs/implementation-plan.md`.
 
 ---
 
@@ -104,7 +103,7 @@ The domain in one sentence: **a sample owns files; a file has a QC status that a
 | Tests | 129 backend tests (domain rules without HTTP, plus API, auth, admin, upload, config, logging and app-wiring tests) and 16 front-end tests ([§6](#6-testing-strategy)). |
 | Large files | Any file type; 10 GB local cap (`MAX_UPLOAD_MB`); bounded memory per request; resumable uploads; HTTP Range downloads; refuses uploads that would fill the disk ([§3.8](#38-uploads-large-files-and-downloads)). |
 | CI | GitHub Actions: backend (ruff, pytest, pip-audit), front end (ESLint, `tsc`, Vitest, build, npm audit) and Docker build jobs, read-only, actions pinned by SHA ([§7](#7-cicd)). |
-| README | Run instructions, choices, alternatives, assumptions, weaknesses, more time ([§11](#11-readme-outline)). |
+| README | Run instructions, choices, alternatives, assumptions, weaknesses, more time ([§10](#10-readme-outline)). |
 | Security | Least privilege, no existence leaks, hardened sessions, CSRF defence, safe uploads, audited actions ([§5](#5-security-considerations)). |
 | Explainability | Few dependencies: no ORM, no auth library, no UI framework. Every access rule is in `app/domain/service.py`; every account rule is in `app/domain/users.py`. |
 
@@ -875,40 +874,11 @@ sequenceDiagram
 
 ---
 
-## 10. Implementation plan and time budget
-
-### Actual timeline (2–3 h allowed, about 2 h 58 min used)
-
-Times come from the repository's commit and file timestamps.
-
-| Clock time | Elapsed | Step | Output |
-|---|---|---|---|
-| 12:56 → 13:51 | ~55 min | **Plan** | Requirements, assumptions, design decisions, diagrams; this document committed |
-| 13:51 → 14:04 | ~15 min | **Phase 1: required scope** | Domain, SQLite repository, signer, FastAPI layer, 47 tests, CI, README. Committed and tagged `v1-timeboxed` |
-| 14:04 → 14:25 | ~20 min | **Phase 2: backend** | Users, sessions, roles, uploads, revocation, admin API, audit table; 90 tests |
-| (same window) | ~15 min | **Phase 2: front end** | React app, 9 component tests, CI job, Dockerfile, QC helper script |
-| ~14:20 | ~5 min | **Manual end-to-end check** | Full flow in a browser; one bug found and fixed (§6.3) |
-| 14:25 → 14:39 | ~15 min | **Docs** | This document and the README updated |
-| 14:39 → 14:53 | ~15 min | **Large-file uploads** | Any file type; resumable chunked uploads up to 10 GB; free-disk check; Range downloads; progress, resume and cancel in the UI; 13 more backend and 5 more front-end tests; verified with a 100 MB upload in the browser; docs |
-| 14:53 → 15:20 | ~25 min | **Code review and fixes** | Strict self-review: upgraded vulnerable dependencies, redacted signed URLs from the access log, made upload completion crash-safe, added security headers, unified the error shape, pinned CI actions by SHA and added audits and a Docker build job; 17 more backend tests |
-| 15:20 → 15:36 | ~15 min | **Second review and fixes** | Fresh pass plus an independent reviewer: issued download URLs now die when a user is deactivated; navigating away keeps uploads resumable; file IDs shown in the UI; `.env.example` no longer breaks Docker; no 500s on NUL paths or missing bytes; `user` in download URLs validated; HEAD supported; lockout window; expired-session purge; 7 more backend and 2 more front-end tests |
-| 15:36 → ~15:54 | ~18 min | **Final review and fixes** | Clean-clone run of the README plus an independent reviewer: HEAD no longer reaches download links (it was writing phantom `download_served` audit rows); every 405 lists all allowed methods; unexpected errors return the standard JSON shape; `.env.example` safe for `docker run --env-file`; status-code tables corrected; 2 more backend tests |
-
-### How the time box was managed
-
-- **Required scope first.** Phase 1 delivered everything the spec asks for, fully tested, before any extension started. Tagging it meant a complete submission existed even if the extension had to be abandoned.
-- **Cut line for phase 2** (drop in this order if time ran short): the audit-log page → the Dockerfile → the front-end component tests. Nothing had to be cut.
-- **Still deliberately out of scope**, even with time left over: SSO/MFA, cloud infrastructure, malware scanning, migrations ([§8–9](#8-production-path-on-azure-not-built)). These need an Azure tenant or are larger than the box allows.
-
-The original phase-1 step plan (estimated 150 min for that scope alone, before the AI-assisted pace was known) is in the `v1-timeboxed` version of this document.
-
----
-
-## 11. README outline
+## 10. README outline
 
 | README section | Content | Source |
 |---|---|---|
-| Overview + time-box note | What it does; built within the time box; tag `v1-timeboxed` checkpoint | [§0](#0-scope-and-history), [§10](#10-implementation-plan-and-time-budget) |
+| Overview + time-box note | What it does; built within the time box; tag `v1-timeboxed` checkpoint | [§0](#0-scope-and-history) |
 | How to run it | Env (secrets, admin seed, `COOKIE_SECURE=false` locally); backend; `npm run dev`; single-process production build; Docker; tests | [§2.2](#22-folder--project-structure), [§7](#7-cicd) |
 | Using it | UI walkthrough + `simulate_qc.py` | [§6.3](#63-manual-end-to-end-check-done-before-submission) |
 | API summary | Endpoint table | [§3.2](#32-api-design) |

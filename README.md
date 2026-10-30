@@ -8,7 +8,7 @@ A sample has files, and each file has a QC status that a separate pipeline updat
 > - **Required scope first.** I delivered the spec's required scope, fully tested, and tagged it **[`v1-timeboxed`](../../tree/v1-timeboxed)** as a checkpoint.
 > - **Then the extension**, with the remaining time: the front end, sign-in, roles, admin dashboard, large-file uploads of any type, and revocation.
 >
-> The timeline and what each phase added are in [implementation plan §0](docs/implementation-plan.md#0-scope-and-history) and [§10](docs/implementation-plan.md#10-implementation-plan-and-time-budget).
+> What each phase added is in [implementation plan §0](docs/implementation-plan.md#0-scope-and-history).
 
 The full design is in **[docs/implementation-plan.md](docs/implementation-plan.md)**: requirements, diagrams, API, error semantics, roles, alternatives considered, security, tests, CI and the Azure production path.
 
